@@ -217,6 +217,6 @@ app.listen(port, () => {
 });
 
 
-// Get your endpoint online
-ngrok.connect({ addr: port, authtoken_from_env: true })
-	.then(listener => console.log(`Ingress established at: ${listener.url()}`));
+// // Get your endpoint online
+// ngrok.connect({ addr: port, authtoken_from_env: true })
+// 	.then(listener => console.log(`Ingress established at: ${listener.url()}`));
