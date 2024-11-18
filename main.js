@@ -200,7 +200,7 @@ app.post('/handle-recording', (req, res) => {
     const questionNumber = parseInt(req.query.question, 10);
 
     switch (questionNumber) {
-      case "1":
+      case 1:
         
        // Log or save the recording URL for later use
     console.log('User recording available at:', recordingUrl);
@@ -230,7 +230,7 @@ app.post('/handle-recording', (req, res) => {
 
 
         break;
-        case "2":
+        case 2:
           userData = {
             ...userData,
             address_start  : {
@@ -253,7 +253,7 @@ app.post('/handle-recording', (req, res) => {
               finishOnKey: '*'
             });
         break;
-        case "3":
+        case 3:
           userData = {
             ...userData,
             address_distination  : {
