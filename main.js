@@ -31,6 +31,8 @@ const port = process.env.PORT || 3000;
 const url = "https://taxi-1-pvkm.onrender.com"
 
 
+let userData = {}
+
 // Helper function to download an audio file
 async function downloadAudio(url , outputPath) {
   const authString = btoa(`${process.env.A1}:${process.env.A2}`);
@@ -121,7 +123,7 @@ app.post('/voice', (req, res) => {
     const twiml = new twilio.twiml.VoiceResponse();
   
     // Start by greeting the caller
-    //twiml.say("Bienvenue à notre service.", { language: 'fr' });
+    //twiml.say(" Bonjour, Bienvenu à notre service Taxi Amiens .", { language: 'fr' });
     twiml.play(`${url}/1.mp3` );
   
     // Present options
@@ -130,7 +132,7 @@ app.post('/voice', (req, res) => {
       numDigits: 1,
       action: '/handle-key'
     });
-    //gather.say("Pour les ventes, appuyez sur 1.  Pour laisser un message, appuyez sur 2.", { language: 'fr' });
+    //gather.say("Pour réserver un taxi appuyer sur 1, pour des renseignements appuyer sur 2", { language: 'fr' });
   
     gather.play(`${url}/2.mp3` );
     // If no input is received, repeat the options
@@ -146,25 +148,44 @@ app.post('/handle-key', (req, res) => {
   
     switch (selectedOption) {
       case '1':
-        // twiml.say("Vous avez sélectionné les ventes. Veuillez patienter pendant que nous vous mettons en relation.", { language: 'fr' });
-
+        // twiml.say(" Dite nous, Pour quelle date et quelle heure avez-vous besoin du taxi .", { language: 'fr' });
         twiml.play(`${url}/3.mp3` );
 
-        twiml.dial('SALES_TEAM_PHONE_NUMBER');
+       // twiml.say("Veuillez laisser votre message après le bip. Appuyez sur une touche lorsque vous avez terminé.", { language: 'fr' });
+
+       twiml.play(`${url}/bip.mp3` );
+
+       twiml.record({
+        action: '/handle-recording-1',
+        maxLength: 60, // Limit recording to 60 seconds
+        finishOnKey: '*'
+      });
+
+
+       
+
+     
+
+
+
+
+    
+
+
+
+      
+     
+       
         break;
       
       case '2':
-        // twiml.say("Veuillez laisser votre message après le bip. Appuyez sur une touche lorsque vous avez terminé.", { language: 'fr' });
-        twiml.play(`${url}/4.mp3` );
-        twiml.record({
-          action: '/handle-recording',
-          maxLength: 60, // Limit recording to 60 seconds
-          finishOnKey: '*'
-        });
+        // twiml.say("Vous avez sélectionné des renseignements, Voulez patientez pendant qu’on vous mette en relation avec un de nous conseiller. Le temps d’attente estimer à 2 minutes.", { language: 'fr' });
+        twiml.play(`${url}/8.mp3` );
+      
         break;
       default:
         //twiml.say("Désolé, je n'ai pas compris ce choix.", { language: 'fr' });
-        twiml.play(`${url}/5.mp3` );
+        twiml.play(`${url}/error.mp3` );
         twiml.redirect('/voice');
         break;
     }
@@ -173,34 +194,111 @@ app.post('/handle-key', (req, res) => {
     res.send(twiml.toString());
 });
 
-app.post('/handle-recording', (req, res) => {
+app.post('/handle-recording-1', (req, res) => {
     const recordingUrl = req.body.RecordingUrl;
     const twiml = new twilio.twiml.VoiceResponse();
 
-   // twiml.say("Merci pour votre message. Nous avons bien reçu votre enregistrement.", { language: 'fr' });
-   twiml.play(`${url}/6.mp3` ); 
-   twiml.redirect('/voice'); // Redirect to the main menu
 
     // Log or save the recording URL for later use
     console.log('User recording available at:', recordingUrl);
 
    
+     userData = {
+      data  : {
+        ...req.body
+      }
+    }
   
 
+      // twiml.say(" : Très bien. Pourriez-vous nous donner l’adresse de départ ?  .", { language: 'fr' });
+      twiml.play(`${url}/4.mp3` );
 
-  setTimeout(async ()=>{
-    const   transcription = await transcribeFromUrl(recordingUrl);
-    users.insert({
-      ...req.body,
-      transcription
-   });
-  } ,  5000)
+      // twiml.say("Veuillez laisser votre message après le bip. Appuyez sur une touche lorsque vous avez terminé.", { language: 'fr' });
 
+      twiml.play(`${url}/bip.mp3` );
+
+      twiml.record({
+       action: '/handle-recording-2',
+       maxLength: 60, // Limit recording to 60 seconds
+       finishOnKey: '*'
+     });
+
+
+ 
 
     res.type('text/xml');
     res.send(twiml.toString());
 });
   
+
+
+app.post('/handle-recording-2', (req, res) => {
+  const recordingUrl = req.body.RecordingUrl;
+  const twiml = new twilio.twiml.VoiceResponse();
+
+  userData = {
+    ...userData,
+    address_start  : {
+      ...req.body
+    },
+  }
+
+
+
+     // twiml.say("Très bien. Et pourriez-vous nous donner l’adresse de destination ?  .", { language: 'fr' });
+     twiml.play(`${url}/5.mp3` );
+
+     // twiml.say("Veuillez laisser votre message après le bip. Appuyez sur une touche lorsque vous avez terminé.", { language: 'fr' });
+
+     twiml.play(`${url}/bip.mp3` );
+
+     twiml.record({
+      action: '/handle-recording-3',
+      maxLength: 60, // Limit recording to 60 seconds
+      finishOnKey: '*'
+    });
+})
+
+app.post('/handle-recording-3', (req, res) => {
+  
+  const twiml = new twilio.twiml.VoiceResponse();
+
+  userData = {
+    ...userData,
+    address_distination  : {
+      ...req.body
+    },
+  }
+
+
+  setTimeout(async ()=>{
+    const   distination_transcription = await transcribeFromUrl(userData.address_distination.RecordingUrl);
+    const   start_transcription = await transcribeFromUrl(userData.address_start.RecordingUrl);
+
+    userData = {
+      ...userData,
+      address_distination : {
+        ...userData.address_distination,
+        distination_transcription
+
+      },
+      address_start : {
+        ...userData.address_start,
+        start_transcription
+      }
+    }
+    users.insert(userData);
+  } ,  5000)
+
+
+    // twiml.say(": Très bien, votre réservation est confirmée. Un chauffeur vous appellera tout de suite", { language: 'fr' });
+
+    twiml.play(`${url}/6.mp3` );
+
+    // twiml.say(" Merci pour votre réservation, nous vous souhaitons un agréable trajet", { language: 'fr' });
+
+    twiml.play(`${url}/7.mp3` );
+})
 
 app.get('/data', (req, res) => {
 
