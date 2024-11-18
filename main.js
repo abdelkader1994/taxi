@@ -156,7 +156,7 @@ app.post('/handle-key', (req, res) => {
        twiml.play(`${url}/bip.mp3` );
 
        twiml.record({
-        action: '/handle-recording-1',
+        action: '/handle-recording?question=1',
         maxLength: 60, // Limit recording to 60 seconds
         finishOnKey: '*'
       });
@@ -194,38 +194,109 @@ app.post('/handle-key', (req, res) => {
     res.send(twiml.toString());
 });
 
-app.post('/handle-recording-1', (req, res) => {
+app.post('/handle-recording', (req, res) => {
     const recordingUrl = req.body.RecordingUrl;
     const twiml = new twilio.twiml.VoiceResponse();
+    const questionNumber = parseInt(req.query.question, 10);
 
-
-    // Log or save the recording URL for later use
+    switch (questionNumber) {
+      case "1":
+        
+       // Log or save the recording URL for later use
     console.log('User recording available at:', recordingUrl);
 
    
-     userData = {
-      data  : {
-        ...req.body
-      }
-    }
-  
-
-      // twiml.say(" : Très bien. Pourriez-vous nous donner l’adresse de départ ?  .", { language: 'fr' });
-      twiml.play(`${url}/4.mp3` );
-
-      // twiml.say("Veuillez laisser votre message après le bip. Appuyez sur une touche lorsque vous avez terminé.", { language: 'fr' });
-
-      twiml.play(`${url}/bip.mp3` );
-
-      twiml.record({
-       action: '/handle-recording-2',
-       maxLength: 60, // Limit recording to 60 seconds
-       finishOnKey: '*'
-     });
-
-
+    userData = {
+     data  : {
+       ...req.body
+     }
+   }
  
 
+     // twiml.say(" : Très bien. Pourriez-vous nous donner l’adresse de départ ?  .", { language: 'fr' });
+     twiml.play(`${url}/4.mp3` );
+
+     // twiml.say("Veuillez laisser votre message après le bip. Appuyez sur une touche lorsque vous avez terminé.", { language: 'fr' });
+
+     twiml.play(`${url}/bip.mp3` );
+
+     twiml.record({
+       action: '/handle-recording?question=2',
+      maxLength: 60, // Limit recording to 60 seconds
+      finishOnKey: '*'
+    });
+
+
+
+
+        break;
+        case "2":
+          userData = {
+            ...userData,
+            address_start  : {
+              ...req.body
+            },
+          }
+        
+        
+        
+             // twiml.say("Très bien. Et pourriez-vous nous donner l’adresse de destination ?  .", { language: 'fr' });
+             twiml.play(`${url}/5.mp3` );
+        
+             // twiml.say("Veuillez laisser votre message après le bip. Appuyez sur une touche lorsque vous avez terminé.", { language: 'fr' });
+        
+             twiml.play(`${url}/bip.mp3` );
+        
+             twiml.record({
+              action: '/handle-recording?question=3',
+              maxLength: 60, // Limit recording to 60 seconds
+              finishOnKey: '*'
+            });
+        break;
+        case "3":
+          userData = {
+            ...userData,
+            address_distination  : {
+              ...req.body
+            },
+          }
+        
+        
+          setTimeout(async ()=>{
+            const   distination_transcription = await transcribeFromUrl(userData.address_distination.RecordingUrl);
+            const   start_transcription = await transcribeFromUrl(userData.address_start.RecordingUrl);
+        
+            userData = {
+              ...userData,
+              address_distination : {
+                ...userData.address_distination,
+                distination_transcription
+        
+              },
+              address_start : {
+                ...userData.address_start,
+                start_transcription
+              }
+            }
+            users.insert(userData);
+          } ,  5000)
+        
+        
+            // twiml.say(": Très bien, votre réservation est confirmée. Un chauffeur vous appellera tout de suite", { language: 'fr' });
+        
+            twiml.play(`${url}/6.mp3` );
+        
+            // twiml.say(" Merci pour votre réservation, nous vous souhaitons un agréable trajet", { language: 'fr' });
+        
+            twiml.play(`${url}/7.mp3` );
+        break;
+    
+      default:
+        break;
+    }
+
+
+   
     res.type('text/xml');
     res.send(twiml.toString());
 });
@@ -233,71 +304,17 @@ app.post('/handle-recording-1', (req, res) => {
 
 
 app.post('/handle-recording-2', (req, res) => {
-  const recordingUrl = req.body.RecordingUrl;
+  
   const twiml = new twilio.twiml.VoiceResponse();
 
-  userData = {
-    ...userData,
-    address_start  : {
-      ...req.body
-    },
-  }
-
-
-
-     // twiml.say("Très bien. Et pourriez-vous nous donner l’adresse de destination ?  .", { language: 'fr' });
-     twiml.play(`${url}/5.mp3` );
-
-     // twiml.say("Veuillez laisser votre message après le bip. Appuyez sur une touche lorsque vous avez terminé.", { language: 'fr' });
-
-     twiml.play(`${url}/bip.mp3` );
-
-     twiml.record({
-      action: '/handle-recording-3',
-      maxLength: 60, // Limit recording to 60 seconds
-      finishOnKey: '*'
-    });
+  
 })
 
 app.post('/handle-recording-3', (req, res) => {
   
   const twiml = new twilio.twiml.VoiceResponse();
 
-  userData = {
-    ...userData,
-    address_distination  : {
-      ...req.body
-    },
-  }
-
-
-  setTimeout(async ()=>{
-    const   distination_transcription = await transcribeFromUrl(userData.address_distination.RecordingUrl);
-    const   start_transcription = await transcribeFromUrl(userData.address_start.RecordingUrl);
-
-    userData = {
-      ...userData,
-      address_distination : {
-        ...userData.address_distination,
-        distination_transcription
-
-      },
-      address_start : {
-        ...userData.address_start,
-        start_transcription
-      }
-    }
-    users.insert(userData);
-  } ,  5000)
-
-
-    // twiml.say(": Très bien, votre réservation est confirmée. Un chauffeur vous appellera tout de suite", { language: 'fr' });
-
-    twiml.play(`${url}/6.mp3` );
-
-    // twiml.say(" Merci pour votre réservation, nous vous souhaitons un agréable trajet", { language: 'fr' });
-
-    twiml.play(`${url}/7.mp3` );
+ 
 })
 
 app.get('/data', (req, res) => {
